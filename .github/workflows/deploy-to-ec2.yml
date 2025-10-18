@@ -1,5 +1,4 @@
 name: Deploy to EC2
-
 on:
   push:
     branches: [ main ]
@@ -7,31 +6,32 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Copy files to EC2
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: ${{ secrets.EC2_SSH_PORT || '22' }}
-        source: "."
-        target: "/home/${{ secrets.EC2_USER }}/app"
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_SSH_PORT || '22' }}
+          source: "."
+          target: "/home/ubuntu/app"
 
-    - name: Deploy on EC2
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        port: ${{ secrets.EC2_SSH_PORT || '22' }}
-        script: |
-          cd /home/${{ secrets.EC2_USER }}/app
-          docker --version || (sudo apt-get update -y && sudo apt-get install -y docker.io && sudo systemctl start docker)
-          sudo docker build -t python-app .
-          sudo docker ps -q --filter "name=python-app" | grep -q . && sudo docker stop python-app && sudo docker rm python-app || true
-          sudo docker run -d -p 5000:5000 --name python-app python-app
+      - name: Run commands on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/app
+            sudo apt-get update -y
+            sudo apt-get install -y docker.io
+            sudo systemctl start docker
+            sudo docker build -t python-app .
+            sudo docker stop python-app || true
+            sudo docker rm python-app || true
+            sudo docker run -d -p 5000:5000 --name python-app python-app
